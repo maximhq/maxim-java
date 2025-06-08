@@ -1,10 +1,9 @@
 import com.vanniktech.maven.publish.SonatypeHost
-
+import org.gradle.api.JavaVersion
+import org.gradle.external.javadoc.StandardJavadocDocletOptions
 
 plugins {
-    alias(libs.plugins.jetbrains.kotlin.jvm) apply false
-    alias(libs.plugins.github.khalilou88.jnxplus)
-    alias(libs.plugins.jetbrains.kotlin.jvm)
+    kotlin("jvm") version "2.0.20"
     kotlin("plugin.serialization") version "2.0.20"
     `java-library`
     `maven-publish`
@@ -16,7 +15,7 @@ kotlin { jvmToolchain(17) }
 
 group = "ai.getmaxim"
 
-version = "1.0.0"
+version = "1.0.1"
 
 repositories { mavenCentral() }
 
@@ -37,7 +36,7 @@ mavenPublishing {
     publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL, true)
     signAllPublications()
 
-    coordinates(group.toString(), "sdk", version.toString())
+    coordinates(group.toString(), "maxim-java", version.toString())
 
     pom {
         name.set("Maxim Java Library")
@@ -71,7 +70,7 @@ mavenPublishing {
 
 signing {
     val signingPassword: String by project
-    val secretKeyRingFile = file("../../tools/keys/private_key.gpg")
+    val secretKeyRingFile = file("./keys/private_key.gpg")
     useInMemoryPgpKeys(secretKeyRingFile.readText(), signingPassword)
 }
 

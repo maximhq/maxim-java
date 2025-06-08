@@ -1,5 +1,4 @@
-rootProject.name = "maxim"
-include(":libs:maxim-java")
+rootProject.name = "maxim-java"
 
 pluginManagement {
     repositories {
