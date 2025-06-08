@@ -1,0 +1,63 @@
+{
+    "dev": {
+        "apiKey": "f0d784a5-e6c8-4707-bdc9-b4bdef99cdf8",
+        "promptId": "clxr8aiwu00053c2qllp0i8vv",
+        "promptVersionId": "clxr8i5qc000a3c2qanvjurg8",
+        "baseUrl": "http://localhost:3000",
+        "repoId": "clxagkdq20002odtfrnjxgket",
+        "folderId": "clxrj2wln00115q9uces89o6y",
+        "prodPromptVersionId": "clxr8i5qc000a3c2qanvjurg8",
+        "prodAndT123PromptVersionId": "clxrgn2f000045q9uiebie0ac",
+        "stageAndT123PromptVersionId": "clxrguj3900085q9uan8uuu16",
+        "testAndTagsCustomerIdGradeAndTest": "clxrh0w4h000e5q9u0sieqjpi",
+        "prodPromptVersions": [
+            "clxyo4drl0004x7ft2yepzn04",
+            "clxr8i5qc000a3c2qanvjurg8",
+            "clxriwnq3000q5q9unjwhz992",
+            "clxriy5dc000y5q9uroy5zh4q"
+        ],
+        "prodPromptsWithCustomerId1234": [
+            "clxrh0w4h000e5q9u0sieqjpi"            
+        ],
+        "prodPromptsWithOptionalCustomerId1234": [
+            "clxrh0w4h000e5q9u0sieqjpi",
+            "clxyo4drl0004x7ft2yepzn04",
+            "clxriy5dc000y5q9uroy5zh4q",
+            "clxriwnq3000q5q9unjwhz992"
+        ],
+        "testFolderId": "clxrj2wln00115q9uces89o6y",
+        "testFolderEnvStageTenant123PromptVersion": "clxrjdfx900195q9uo061kdah"
+    },
+    "beta": {
+        "apiKey": "8bbd3d2a-c9fc-496c-981d-716604391710",
+        "baseUrl": "https://app.beta.getmaxim.ai",
+        "repoId": "clyexqopx0002b0y4dd7bsqqu",
+        "promptId": "clvvzt2l60004gpi7a4djwhwx",
+        "promptVersionId": "clvvzu1c10009gpi7u2t50ub9",
+        "folderId": "clvw00fuw00017rambz6e5za2",
+        "prodPromptVersionId": "clvw8zr1w0002ddt0usddq4pb",
+        "prodAndT123PromptVersionId": "clvw9b3hk0005ddt0xnpdi4ob",
+        "stageAndT123PromptVersionId": "clvwdizfa00021yraejdv1ssk",
+        "testAndTagsCustomerIdGradeAndTest": "clvwe063k000a1yra1n86a9ii",
+        "prodPromptVersions": [
+            "clvw9b3hk0005ddt0xnpdi4ob",
+            "clpz85gw7000gvgepycpz4voh",
+            "clr4tipmi0002m100gvg1gduq",
+            "clqfalqv400315z9234d7jd50",
+            "clt2ktsig0004gj5lmjem5tw7"
+        ],
+        "prodPromptsWithCustomerId1234": [
+            "clpz85gw7000gvgepycpz4voh",
+            "clqcaspcy000g3cp6vpbcvgwb"
+        ],
+        "prodPromptsWithOptionalCustomerId1234": [
+            "clpz85gw7000gvgepycpz4voh",
+            "clr4tipmi0002m100gvg1gduq",
+            "clqcaspcy000g3cp6vpbcvgwb",
+            "clt2ktsig0004gj5lmjem5tw7",
+            "clvw8zr1w0002ddt0usddq4pb"
+        ],
+        "testFolderId": "clvw00fuw00017rambz6e5za2",
+        "testFolderEnvStageTenant123PromptVersion": "clvwgvhri000m10z4bb0ytkkr"
+    }
+}
