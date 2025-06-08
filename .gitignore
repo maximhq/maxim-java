@@ -98,3 +98,5 @@ Thumbs.db
 # Application specific
 application.properties
 !application-*.properties
+
+main.gradle.properties
