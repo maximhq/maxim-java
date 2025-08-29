@@ -2,6 +2,8 @@ package ai.getmaxim.sdk.logger.components
 
 import ai.getmaxim.sdk.logger.LogWriter
 
+
+
 data class TraceConfig(
     override val id: String,
     override val name: String? = null,
@@ -9,10 +11,6 @@ data class TraceConfig(
     override val tags: Map<String, String>? = null
 ) : BaseConfig(id, name = name, tags = tags)
 
-data class Feedback(
-    val score: Int,
-    val comment: String? = null
-)
 
 class Trace(config: TraceConfig, writer: LogWriter) : EventEmittingBaseContainer(Entity.TRACE, config, writer) {
     init {
@@ -61,6 +59,27 @@ class Trace(config: TraceConfig, writer: LogWriter) : EventEmittingBaseContainer
         return retrieval
     }
 
+    fun addToolCall(config: ToolCallConfig): ToolCall {
+        val toolCall = ToolCall(config, writer)
+        commit(
+            writer, Entity.TRACE, id, "add-tool-call", mapOf(
+                "id" to config.id,
+                *toolCall.data().toList().toTypedArray()
+            )
+        )
+        return toolCall
+    }
+
+    fun addError(config: ErrorConfig) {
+        val error = Error(config, writer)
+        commit(
+            writer, Entity.TRACE, id, "add-error", mapOf(
+                "id" to config.id,
+                *error.data().toList().toTypedArray()
+            )
+        )
+    }
+
     fun setInput(input: String): Trace {
         commit("update", mapOf("input" to input))
         return this
@@ -69,6 +88,10 @@ class Trace(config: TraceConfig, writer: LogWriter) : EventEmittingBaseContainer
     fun setOutput(output: String): Trace {
         commit("update", mapOf("output" to output))
         return this
+    }
+
+    fun addAttachment(attachment: Attachment) {
+        commit("upload-attachment", attachment)
     }
 
     companion object {
@@ -107,6 +130,32 @@ class Trace(config: TraceConfig, writer: LogWriter) : EventEmittingBaseContainer
                 )
             )
             return retrieval
+        }
+
+        fun addAttachment(writer: LogWriter, id: String, attachment: Attachment) {
+            commit(writer, Entity.TRACE, id, "upload-attachment", attachment)
+        }
+
+        fun addToolCall(writer: LogWriter, id: String, config: ToolCallConfig): ToolCall {
+            val toolCall = ToolCall(config, writer)
+            commit(
+                writer, Entity.TRACE, id, "add-tool-call", mapOf(
+                    "id" to config.id,
+                    *toolCall.data().toList().toTypedArray()
+                )
+            )
+            return toolCall
+        }
+
+        fun addError(writer: LogWriter, id: String, config: ErrorConfig): Error {
+            val error = Error(config, writer)
+            commit(
+                writer, Entity.TRACE, id, "add-tool-call", mapOf(
+                    "id" to config.id,
+                    *error.data().toList().toTypedArray()
+                )
+            )
+            return error
         }
 
         fun setInput(writer: LogWriter, id: String, input: String) {

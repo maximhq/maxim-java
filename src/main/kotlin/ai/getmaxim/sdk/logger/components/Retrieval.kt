@@ -18,6 +18,10 @@ class Retrieval(config: RetrievalConfig, writer: LogWriter) :
         commit("update", mapOf("input" to query))
     }
 
+    fun addAttachment(attachment: Attachment) {
+        commit("upload-attachment", attachment)
+    }
+
     fun setOutput(docs: Any) {
         val finalDocs = when (docs) {
             is String -> listOf(docs)
@@ -39,6 +43,10 @@ class Retrieval(config: RetrievalConfig, writer: LogWriter) :
                 else -> throw IllegalArgumentException("docs must be a String or a List of Strings")
             }
             commit(writer, Entity.RETRIEVAL, id, "end", mapOf("docs" to finalDocs, "endTimestamp" to utcNow()))
+        }
+
+        fun addAttachment(writer: LogWriter, id: String, attachment: Attachment) {
+            commit(writer, Entity.RETRIEVAL, id, "upload-attachment", attachment)
         }
 
         fun end(writer: LogWriter, id: String, data: Any? = null) {

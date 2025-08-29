@@ -11,6 +11,7 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
 import org.slf4j.LoggerFactory
+import org.slf4j.event.Level
 import java.util.*
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.scheduleAtFixedRate
@@ -28,7 +29,9 @@ data class Config(
 
 @ExperimentalSerializationApi
 class Maxim(private val config: Config) {
-    private val logger = LoggerFactory.getLogger(Maxim::class.java)
+    private val logger = LoggerFactory.getLogger(Maxim::class.java).apply {
+        if (config.debug) atLevel(Level.DEBUG) else atLevel(Level.INFO)
+    }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val baseUrl: String = config.baseUrl ?: "https://app.getmaxim.ai"
     private val apiKey: String = config.apiKey
@@ -54,12 +57,13 @@ class Maxim(private val config: Config) {
             coroutineScope {
                 launch { syncPrompts() }
                 launch { syncFolders() }
-                launch { syncPromptChains() }
+//                launch { syncPromptChains() }
             }
         } catch (e: Exception) {
-            logger.warn("Error while syncing: ${e.message}")
+            logger.warn("Error while syncing: ${e.message}", e) // Added stack trace for better debugging
         }
     }
+
 
     private suspend fun syncPrompts() {
         val prompts = MaximAPI.getPrompts(baseUrl, apiKey)
@@ -74,19 +78,24 @@ class Maxim(private val config: Config) {
     }
 
     private suspend fun syncPromptChains() {
-        val promptChains = MaximAPI.getPromptChains(baseUrl, apiKey)
-        logger.debug("Syncing ${promptChains.size} prompt chains")
-        promptChains.forEach { promptChain ->
-            try {
-                cache.set(
-                    getCacheKey(EntityType.PROMPT_CHAIN, promptChain.promptChainId),
-                    MaximJson.encodeToString(promptChain)
-                )
-            } catch (e: Exception) {
-                logger.error("Error while syncing ${promptChain.promptChainId} ${e.message}")
+        try {
+            val promptChains = MaximAPI.getPromptChains(baseUrl, apiKey)
+            logger.debug("Syncing ${promptChains.size} prompt chains")
+            promptChains.forEach { promptChain ->
+                try {
+                    cache.set(
+                        getCacheKey(EntityType.PROMPT_CHAIN, promptChain.promptChainId),
+                        MaximJson.encodeToString(promptChain)
+                    )
+                } catch (e: Exception) {
+                    logger.error("Error while caching prompt chain ${promptChain.promptChainId}: ${e.message}")
+                }
             }
+        } catch (e: Exception) {
+            logger.warn("Error while syncing prompt chains: ${e.message}", e) // Added stack trace
         }
     }
+
 
     private suspend fun syncFolders() {
         val folders = MaximAPI.getFolders(baseUrl, apiKey)

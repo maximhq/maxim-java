@@ -1,60 +1,46 @@
 package ai.getmaxim.sdk.apis
 
 import ai.getmaxim.sdk.models.*
-import java.net.HttpURLConnection
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.encodeToString
 import org.slf4j.LoggerFactory
-import java.net.URI
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.call.*
+import io.ktor.client.plugins.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
 
 class MaximAPI {
     companion object {
         private val logger = LoggerFactory.getLogger(MaximAPI::class.java)
+        private val client = HttpClient(CIO) { // or OkHttp, etc.
+            install(HttpTimeout)
+        }
+
         private suspend inline fun <reified T> call(
             url: String,
             method: String,
             apiKey: String,
             headers: Map<String, String>? = null,
-            body: String? = null,
+            payload: String? = null,
         ): T {
-            return withContext(Dispatchers.IO) {
-                val parsedUrl = URI.create(url).toURL()
-                val isLocalhost = parsedUrl.host == "localhost"
-                val connection = if (isLocalhost) {
-                    (parsedUrl.openConnection() as HttpURLConnection).apply {
-                        connectTimeout = 30000
-                        readTimeout = 60000
-                    }
-                } else {
-                    (parsedUrl.openConnection() as javax.net.ssl.HttpsURLConnection).apply {
-                        connectTimeout = 30000
-                        readTimeout = 60000
-                    }
+            return MaximJson.decodeFromString(client.request(url) {
+                this.method = HttpMethod.parse(method)
+                header("x-maxim-api-key", apiKey)
+                headers?.forEach { (key, value) ->
+                    header(key, value)
                 }
-                connection.apply {
-                    requestMethod = method
-                    setRequestProperty("x-maxim-api-key", apiKey)
-                    headers?.forEach { (key, value) -> setRequestProperty(key, value) }
-                    doInput = true
-                    if (body != null) {
-                        doOutput = true
-                        outputStream.write(body.toByteArray())
-                    }
+                // Only set body for non-GET requests
+                if (method.uppercase() != "GET" && payload != null) {
+                    contentType(ContentType.Application.Json)
+                    setBody(payload)
                 }
-                try {
-                    val responseCode = connection.responseCode
-                    val responseBody = connection.inputStream.bufferedReader().use { it.readText() }
-                    logger.debug("API $url - $responseCode")
-                    if (responseCode in 200..299) {
-                        MaximJson.decodeFromString<T>(responseBody)
-                    } else {
-                        throw Exception("HTTP Error: $responseCode")
-                    }
-                } finally {
-                    connection.disconnect()
+
+                timeout {
+                    connectTimeoutMillis = 30000
+                    requestTimeoutMillis = 60000
                 }
-            }
+            }.bodyAsText())
         }
 
         suspend fun getPrompt(baseUrl: String, apiKey: String, id: String): PromptVersionsAndRules {
@@ -117,7 +103,8 @@ class MaximAPI {
 
         suspend fun doesLogRepositoryExist(baseUrl: String, apiKey: String, loggerId: String): Boolean {
             return try {
-                call<MaximAPIResponse>("$baseUrl/api/sdk/v3/log-repositories?loggerId=$loggerId", "GET", apiKey)
+                val resp =
+                    call<MaximAPIResponse>("$baseUrl/api/sdk/v3/log-repositories?loggerId=$loggerId", "GET", apiKey)
                 true
             } catch (e: Exception) {
                 false
@@ -133,6 +120,32 @@ class MaximAPI {
                 logs
             )
             if (response.error != null) throw Exception(response.error.message)
+        }
+
+        suspend fun getUploadUrl(
+            baseUrl: String,
+            apiKey: String,
+            key: String,
+            mimeType: String,
+            size: Int
+        ): SignedUrlResponse {
+            val response: MaximAPIResponse = call(
+                "$baseUrl/api/sdk/v1/log-repositories/attachments/upload-url?key=$key&mimeType=$mimeType&size=$size",
+                "GET",
+                apiKey,
+                mapOf("Accept" to "application/json"),
+            )
+            if (response.error != null) throw Exception(response.error.message)
+            return response.data as SignedUrlResponse
+        }
+
+        suspend fun uploadToSignedUrl(url: String, data: ByteArray, mimeType: String) {
+            val response = client.put(url) {
+                setBody(data)
+                header(HttpHeaders.ContentType, mimeType)
+                header(HttpHeaders.ContentLength, data.size.toString())
+            }
+            if (response.status != HttpStatusCode.OK) throw Exception(response.bodyAsText())
         }
     }
 }

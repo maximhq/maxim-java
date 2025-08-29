@@ -1,17 +1,20 @@
 package ai.getmaxim.sdk
 
 import ai.getmaxim.sdk.logger.LoggerConfig
+import ai.getmaxim.sdk.logger.components.ChatCompletionChoice
+import ai.getmaxim.sdk.logger.components.ChatCompletionMessage
+import ai.getmaxim.sdk.logger.components.ChatCompletionResult
 import ai.getmaxim.sdk.logger.components.CompletionRequest
+import ai.getmaxim.sdk.logger.components.ErrorConfig
+import ai.getmaxim.sdk.logger.components.FileDataAttachment
 import ai.getmaxim.sdk.logger.components.GenerationConfig
 import ai.getmaxim.sdk.logger.components.RetrievalConfig
 import ai.getmaxim.sdk.logger.components.SessionConfig
 import ai.getmaxim.sdk.logger.components.SpanConfig
 import ai.getmaxim.sdk.logger.components.TextCompletionChoice
 import ai.getmaxim.sdk.logger.components.TextCompletionResult
-import ai.getmaxim.sdk.logger.components.TraceConfig
 import ai.getmaxim.sdk.logger.components.Usage
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import io.github.cdimascio.dotenv.dotenv
 import kotlinx.serialization.ExperimentalSerializationApi
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -20,6 +23,10 @@ import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import ai.getmaxim.sdk.logger.components.ToolCallConfig
+import ai.getmaxim.sdk.logger.components.TraceConfig
+import ai.getmaxim.sdk.logger.components.UrlAttachment
+import kotlinx.serialization.json.Json
 
 @ExperimentalSerializationApi
 class MaximLoggerTests {
@@ -28,24 +35,25 @@ class MaximLoggerTests {
     private lateinit var config: Map<String, Map<String, Any>>
     private lateinit var repoId: String
 
-    private fun readTestConfig(): String {
-        return object {}.javaClass.getResource("/testConfig.json")?.readText()
-            ?: throw IllegalArgumentException("File not found")
-    }
-
-    private fun parseJsonContent(content: String): Map<String, Map<String, Any>> {
-        val gson = Gson()
-        val mapType = object : TypeToken<Map<String, Map<String, Any>>>() {}.type
-        return gson.fromJson(content, mapType)
-    }
 
     @BeforeEach
     fun setUp() {
-        config = parseJsonContent(readTestConfig())
-        val env = "ai"
-        val apiKey = config[env]!!["apiKey"]!! as String
-        val baseUrl = config[env]!!["baseUrl"]!! as String
-        repoId = config[env]!!["repoId"]!! as String
+        // Check if .env file exists
+        val denv = dotenv {
+            directory = "./"
+            ignoreIfMalformed = true
+            ignoreIfMissing = false
+        }
+
+        val env = "prod"
+        val baseUrl = denv["BASE_URL"]?.also { println("Found BASE_URL: $it") }
+            ?: throw IllegalStateException("REPO_ID environment variable must be set")
+        repoId = denv["REPO_ID"]?.also { println("Found REPO_ID: ${it.take(8)}...") }
+            ?: throw IllegalStateException("REPO_ID environment variable must be set")
+
+        val apiKey = denv["API_KEY"]?.also { println("Found API_KEY: ${it.take(8)}...") }
+            ?: throw IllegalStateException("API_KEY environment variable must be set")
+
         maxim = Maxim(Config(apiKey = apiKey, baseUrl = baseUrl, debug = true))
     }
 
@@ -96,7 +104,7 @@ class MaximLoggerTests {
     }
 
     @Test
-    fun testAddingGeneration(){
+    fun testAddingGeneration() {
         val config = LoggerConfig(id = repoId)
         val logger = maxim.logger(config).get()
         val traceId = UUID.randomUUID().toString()
@@ -106,25 +114,34 @@ class MaximLoggerTests {
             trace.id, GenerationConfig(
                 id = generationId,
                 name = "gen1",
-                provider = "openai",
-                model = "gpt-3.5-turbo-16k",
+                provider = "groq",
+                model = "llama2-70b-4096",
                 modelParameters = mapOf("temperature" to 3),
-                messages = listOf(CompletionRequest(role = "user", content = "Hello, how can I help you today ttttt?"))
+                messages = listOf(
+                    CompletionRequest(role = "user", content = "Hello, how can I help you today?"),
+                    CompletionRequest(role = "system", content = "This is system message")
+                ),
+                metadata = mapOf("test" to "test metadata", "test2" to mapOf("test3" to "test4"))
             )
         )
-        Thread.sleep(30000)
+//        Thread.sleep(30000)
+        logger.generateAddAttachment(
+            generationId,
+            UrlAttachment("https://commondatastorage.googleapis.com/codeskulptor-assets/Collision8-Bit.ogg")
+        )
         logger.generationSetResult(
             generationId = generationId,
-            result = TextCompletionResult(
+            result = ChatCompletionResult(
                 id = UUID.randomUUID().toString(),
-                `object` = "text_completion",
-                created = Instant.now().epochSecond,
-                model = "gpt-35-turbo",
+                `object` = "chat.completion",
+                created = Instant.now().toEpochMilli(),
+                model = "llama2-70b-4096",
                 choices = listOf(
-                    TextCompletionChoice(
+                    ChatCompletionChoice(
                         index = 0,
-                        text = """{"title": "Sending a Greeting in PowerShell", "answer": "To send a greeting in PowerShell, you can create a cmdlet that accepts a name parameter and writes out a greeting to the user. Here's an example of how you can do it:\n\n```powershell\nusing System.Management.Automation;\n\nnamespace SendGreeting\n{\n    [Cmdlet(VerbsCommunications.Send, \"Greeting\")]\n    public class SendGreetingCommand : Cmdlet\n    {\n        [Parameter(Mandatory = true)]\n        public string Name { get; set; }\n\n        protected override void ProcessRecord()\n        {\n            WriteObject(\"Hello \" + Name + \"!\");\n        }\n    }\n}\n```\n\nYou can then use this cmdlet by calling `Send-Greeting -Name suresh` to send a greeting with the name 'suresh'. The cmdlet will write out 'Hello suresh!' as the output.", "source_uuids_scores": [{"uuid": "c3491cef-0485-3a09-b0cd-41fdf78b160c", "score": 1}] }""",
-                        finish_reason = "stop"
+                        message = ChatCompletionMessage(role = "assistant", content = "this is test"),
+                        finish_reason = "stop",
+                        logprobs = null
                     )
                 ),
                 usage = Usage(completion_tokens = 247, prompt_tokens = 1473, total_tokens = 1729)
@@ -132,7 +149,9 @@ class MaximLoggerTests {
         )
         trace.end()
         logger.cleanup()
+//        Thread.sleep(30000)
     }
+
 
     @Test
     fun testAddingLogsOutOfOrder() {
@@ -187,10 +206,17 @@ class MaximLoggerTests {
                 provider = "openai",
                 model = "gpt-3.5-turbo-16k",
                 modelParameters = mapOf("temperature" to 3),
-                messages = listOf(CompletionRequest(role = "user", content = "Hello, how can I help you today?"))
+                messages = listOf(
+                    CompletionRequest(role = "user", content = "Hello, how can I help you today?"),
+                    CompletionRequest(role = "system", content = "This is system message")
+                )
             )
         )
-        Thread.sleep(4000)
+//        Thread.sleep(4000)
+        logger.generateAddAttachment(
+            generationId,
+            UrlAttachment("https://commondatastorage.googleapis.com/codeskulptor-assets/Collision8-Bit.ogg")
+        )
         logger.generationSetResult(
             generation2Id, result = TextCompletionResult(
                 id = UUID.randomUUID().toString(),
@@ -213,11 +239,91 @@ class MaximLoggerTests {
         val retrievalId = UUID.randomUUID().toString()
         logger.spanRetrieval(span1Id, RetrievalConfig(id = retrievalId, name = "Test Retrieval"))
         logger.retrievalSetInput(retrievalId, "asdasdas")
-        logger.retrievalSetOutput(retrievalId, listOf("doc 1","doc 2"))
+        logger.retrievalSetOutput(retrievalId, listOf("doc 1", "doc 2"))
         logger.retrievalEnd(retrievalId)
         Thread.sleep(2000)
         logger.spanEnd(span1Id)
     }
+
+    @Test
+    fun testAddingToolCall() {
+        val config = LoggerConfig(id = repoId)
+        val logger = maxim.logger(config).get()
+        val traceId = UUID.randomUUID().toString()
+        val trace = logger.trace(TraceConfig(id = traceId))
+        // Create and add a tool call
+        val toolCallId = UUID.randomUUID().toString()
+        // Set a successful result for the tool call
+        logger.traceAddEvent(trace.id, "Setting tool call result")
+        // Using the static method from ToolCall to set the result
+        val toolCall = logger.traceAddToolCall(
+            trace.id, ToolCallConfig(
+                id = toolCallId,
+                name = "weather_api",
+                description = "Gets current weather",
+                args = Json.encodeToString(mapOf("a" to "b", "c" to "d"))
+            )
+        )
+        toolCall.result(Json.encodeToString(mapOf("a" to "this is result a", "c" to "this is result c")))
+        trace.end()
+        logger.cleanup().get()
+    }
+
+    @Test
+    fun testAddingError() {
+        val config = LoggerConfig(id = repoId)
+        val logger = maxim.logger(config).get()
+        val traceId = UUID.randomUUID().toString()
+        val trace = logger.trace(TraceConfig(id = traceId))
+
+        // Add an error to the trace
+        val errorId = UUID.randomUUID().toString()
+        logger.traceAddError(
+            traceId,
+            ErrorConfig(
+                id = errorId,
+                message = "Failed to process request",
+                code = "PROCESSING_ERROR",
+                type = "APPLICATION_ERROR",
+                tags = mapOf("severity" to "high", "component" to "processor")
+            )
+        )
+        trace.end()
+        logger.cleanup().get()
+    }
+
+    @Test
+    fun testAddingAttachment() {
+        val config = LoggerConfig(id = repoId)
+        val logger = maxim.logger(config).get()
+        val traceId = UUID.randomUUID().toString()
+        val trace = logger.trace(TraceConfig(id = traceId))
+
+        // Test URL attachment
+        val urlAttachment = UrlAttachment(
+            url = "https://example.com/sample.pdf",
+            name = "Sample PDF",
+            mimeType = "application/pdf",
+            size = 1024 * 1024, // 1MB
+            tags = mapOf("type" to "document", "category" to "report")
+        )
+        logger.traceAddAttachment(traceId, urlAttachment)
+
+        // Test file data attachment with binary content
+        val fileData = "Sample file content".toByteArray()
+        val fileDataAttachment = FileDataAttachment(
+            data = fileData,
+            name = "sample.txt",
+            mimeType = "text/plain",
+            size = fileData.size,
+            metadata = mapOf("creator" to "test", "version" to 1)
+        )
+        logger.traceAddAttachment(traceId, fileDataAttachment)
+
+        trace.end()
+        logger.cleanup().get()
+    }
+
 //
 //    @Test
 //    fun testShouldBeAbleToCreateASessionAndTraceUsingLogger() {

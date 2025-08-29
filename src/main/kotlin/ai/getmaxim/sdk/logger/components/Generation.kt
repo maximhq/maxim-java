@@ -1,10 +1,14 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 package ai.getmaxim.sdk.logger.components
 
 import ai.getmaxim.sdk.logger.uniqueId
 import ai.getmaxim.sdk.logger.utcNow
 import ai.getmaxim.sdk.logger.LogWriter
 import ai.getmaxim.sdk.models.AnySerializer
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
+
+
 
 @Serializable
 data class GenerationError(
@@ -42,7 +46,7 @@ data class ToolCallFunction(
 )
 
 @Serializable
-data class ToolCall(
+data class ToolCall_(
     val id: String,
     val function: ToolCallFunction,
     val type: String,
@@ -53,13 +57,13 @@ data class ChatCompletionMessage(
     val role: String,
     val content: String?,
     val function_call: ToolCallFunction? = null,
-    val tool_calls: List<ToolCall>? = null,
+    val tool_calls: List<ToolCall_>? = null,
 )
 
 @Serializable
 data class ChatCompletionChoice(
     val index: Int,
-    val message: List<ChatCompletionMessage>,
+    val message: ChatCompletionMessage,
     @Serializable(with = AnySerializer::class)
     val logprobs: Any? = null,
     val finish_reason: String,
@@ -85,6 +89,7 @@ data class Usage(
 sealed class CompletionRequestContent {
     @Serializable
     data class Text(val text: String) : CompletionRequestContent()
+
     @Serializable
     data class ImageUrl(val url: String, val detail: String? = null) : CompletionRequestContent()
 }
@@ -106,7 +111,8 @@ data class GenerationConfig(
     val messages: List<CompletionRequest>,
     val modelParameters: Map<String, @Serializable(with = AnySerializer::class) Any>,
     override val tags: Map<String, String>? = null,
-) : BaseConfig(id, name = name, spanId = spanId, tags = tags)
+    override val metadata: Map<String, @Contextual Any>? = null,
+) : BaseConfig(id, name = name, spanId = spanId, tags = tags, metadata = metadata)
 
 class Generation(config: GenerationConfig, writer: LogWriter) : BaseContainer(Entity.GENERATION, config, writer) {
     private var model: String? = config.model
@@ -140,6 +146,10 @@ class Generation(config: GenerationConfig, writer: LogWriter) : BaseContainer(En
         end()
     }
 
+    fun addAttachment(attachment: Attachment) {
+        commit("upload-attachment", attachment)
+    }
+
     fun error(error: GenerationError) {
         commit("result", mapOf("result" to mapOf("error" to error, "id" to uniqueId())))
         end()
@@ -164,6 +174,10 @@ class Generation(config: GenerationConfig, writer: LogWriter) : BaseContainer(En
 
         fun setModelParameters(writer: LogWriter, id: String, modelParameters: Map<String, Any>) {
             commit(writer, Entity.GENERATION, id, "update", mapOf("modelParameters" to modelParameters))
+        }
+
+        fun addAttachment(writer: LogWriter, id: String, attachment: Attachment) {
+            commit(writer, Entity.GENERATION, id, "upload-attachment",  attachment)
         }
 
         fun setResult(writer: LogWriter, id: String, result: TextCompletionResult) {

@@ -50,3 +50,8 @@ data class MaximAPIResponse(
     val data: Any? = null,
     val error: Error? = null
 )
+
+@Serializable
+data class SignedUrlResponse(
+    val url: String,
+)

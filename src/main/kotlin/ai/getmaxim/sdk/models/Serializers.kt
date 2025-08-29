@@ -2,16 +2,22 @@
 
 package ai.getmaxim.sdk.models
 
+import ai.getmaxim.sdk.logger.components.Attachment
 import ai.getmaxim.sdk.logger.components.ChatCompletionChoice
 import ai.getmaxim.sdk.logger.components.ChatCompletionMessage
 import ai.getmaxim.sdk.logger.components.ChatCompletionResult
 import ai.getmaxim.sdk.logger.components.CompletionRequest
+import ai.getmaxim.sdk.logger.components.FileAttachment
+import ai.getmaxim.sdk.logger.components.FileDataAttachment
 import ai.getmaxim.sdk.logger.components.TextCompletionChoice
 import ai.getmaxim.sdk.logger.components.TextCompletionResult
 import ai.getmaxim.sdk.logger.components.ToolCall
 import ai.getmaxim.sdk.logger.components.ToolCallFunction
+import ai.getmaxim.sdk.logger.components.ToolCall_
+import ai.getmaxim.sdk.logger.components.UrlAttachment
 import ai.getmaxim.sdk.logger.components.Usage
 import kotlinx.serialization.*
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.encoding.Decoder
@@ -57,14 +63,22 @@ object AnySerializer : KSerializer<Any> {
             is String -> JsonPrimitive(value)
             is Number -> JsonPrimitive(value)
             is Boolean -> JsonPrimitive(value)
+
+            is ByteArray -> {
+                // Convert ByteArray to base64 encoded string
+                JsonPrimitive(java.util.Base64.getEncoder().encodeToString(value))
+            }
+
+
             is Map<*, *> -> JsonObject(value.mapKeys { it.key.toString() }
-                .mapValues { serializeToJsonElement(it.value) })
+                .mapValues { serializeToJsonElement(it.value) }
+                .filterValues { it != JsonNull })
 
             is CompletionRequest -> JsonObject(
                 content = mapOf(
                     "role" to JsonPrimitive(value.role),
                     "content" to serializeToJsonElement(value.content)
-                )
+                ).filterValues { it != JsonNull }
             )
 
             is TextCompletionResult -> JsonObject(
@@ -76,7 +90,7 @@ object AnySerializer : KSerializer<Any> {
                     "choices" to serializeToJsonElement(value.choices),
                     "usage" to serializeToJsonElement(value.usage),
                     "error" to serializeToJsonElement(value.error),
-                )
+                ).filterValues { it != JsonNull }
             )
 
             is ChatCompletionResult -> JsonObject(
@@ -88,7 +102,7 @@ object AnySerializer : KSerializer<Any> {
                     "choices" to serializeToJsonElement(value.choices),
                     "usage" to serializeToJsonElement(value.usage),
                     "error" to serializeToJsonElement(value.error),
-                )
+                ).filterValues { it != JsonNull }
             )
 
             is TextCompletionChoice -> JsonObject(
@@ -100,19 +114,19 @@ object AnySerializer : KSerializer<Any> {
                 )
             )
 
-            is ToolCall -> JsonObject(
+            is ToolCall_ -> JsonObject(
                 content = mapOf(
                     "id" to JsonPrimitive(value.id),
                     "type" to JsonPrimitive(value.type),
                     "function" to serializeToJsonElement(value.function),
-                )
+                ).filterValues { it != JsonNull }
             )
 
             is ToolCallFunction -> JsonObject(
                 content = mapOf(
                     "name" to JsonPrimitive(value.name),
                     "arguments" to JsonPrimitive(value.arguments)
-                )
+                ).filterValues { it != JsonNull }
             )
 
             is ChatCompletionMessage -> JsonObject(
@@ -121,27 +135,60 @@ object AnySerializer : KSerializer<Any> {
                     "content" to JsonPrimitive(value.content),
                     "function_call" to serializeToJsonElement(value.function_call),
                     "tool_calls" to serializeToJsonElement(value.tool_calls),
-                )
+                ).filterValues { it != JsonNull }
             )
 
             is ChatCompletionChoice -> JsonObject(
                 content = mapOf(
                     "index" to JsonPrimitive(value.index),
-                    "messages" to serializeToJsonElement(value.message),
+                    "message" to serializeToJsonElement(value.message),
                     "logprobs" to serializeToJsonElement(value.logprobs),
                     "finish_reason" to JsonPrimitive(value.finish_reason)
                 )
             )
+
+            is Attachment -> {
+                // Handle basic Attachment properties
+                val baseMap = mutableMapOf<String, JsonElement>(
+                    "id" to serializeToJsonElement(value.id),
+                    "name" to serializeToJsonElement(value.name),
+                    "size" to serializeToJsonElement(value.size),
+                    "mimeType" to serializeToJsonElement(value.mimeType),
+                    "tags" to serializeToJsonElement(value.tags),
+                    "metadata" to serializeToJsonElement(value.metadata),
+                    "timestamp" to serializeToJsonElement(value.timestamp)
+                ).filterValues { it != JsonNull }.toMutableMap()
+
+                // Handle specific attachment types
+                when (value) {
+                    is FileAttachment -> {
+                        baseMap["path"] = JsonPrimitive(value.path)
+                        baseMap["type"] = JsonPrimitive("file")
+                    }
+
+                    is FileDataAttachment -> {
+                        baseMap["data"] = JsonPrimitive(java.util.Base64.getEncoder().encodeToString(value.data))
+                        baseMap["type"] = JsonPrimitive("fileData")
+                    }
+
+                    is UrlAttachment -> {
+                        baseMap["url"] = JsonPrimitive(value.url)
+                        baseMap["type"] = JsonPrimitive("url")
+                    }
+                }
+                JsonObject(baseMap)
+            }
+
 
             is Usage -> JsonObject(
                 content = mapOf(
                     "prompt_tokens" to JsonPrimitive(value.prompt_tokens),
                     "completion_tokens" to JsonPrimitive(value.completion_tokens),
                     "total_tokens" to JsonPrimitive(value.total_tokens),
-                )
+                ).filterValues { it != JsonNull }
             )
 
-            is List<*> -> JsonArray(value.map { serializeToJsonElement(it) })
+            is List<*> -> JsonArray(value.map { serializeToJsonElement(it) }.filter { it != JsonNull })
             is Instant -> JsonPrimitive(value.toIsoString())
             else -> Json.encodeToJsonElement(value)
         }
@@ -170,6 +217,56 @@ object AnySerializer : KSerializer<Any> {
     }
 }
 
+class CompletionRequestContentSerializer : KSerializer<CompletionRequestContent> {
+    // Define a structure matching the incoming JSON
+    @Serializable
+    private data class CompletionRequestContentSurrogate(
+        val text: String? = null,
+        val url: String? = null,
+        val detail: String? = null,
+        val type: String
+    )
+
+    private val surrogateSer = CompletionRequestContentSurrogate.serializer()
+
+    override val descriptor: SerialDescriptor = surrogateSer.descriptor
+
+    override fun deserialize(decoder: Decoder): CompletionRequestContent {
+        val surrogate = decoder.decodeSerializableValue(surrogateSer)
+
+        return when (surrogate.type) {
+            "text" -> surrogate.text?.let { CompletionRequestContent.Text(it) }
+                ?: throw SerializationException("Missing 'text' field for type 'text'")
+
+            "image" -> CompletionRequestContent.ImageUrl(
+                url = surrogate.url ?: throw SerializationException("Missing 'url' field for type 'image'"),
+                detail = surrogate.detail
+            )
+
+            else -> throw SerializationException("Unknown type: ${surrogate.type}")
+        }
+    }
+
+    override fun serialize(encoder: Encoder, value: CompletionRequestContent) {
+        val surrogate = when (value) {
+            is CompletionRequestContent.Text -> CompletionRequestContentSurrogate(
+                text = value.text,
+                type = "text"
+            )
+
+            is CompletionRequestContent.ImageUrl -> CompletionRequestContentSurrogate(
+                url = value.url,
+                detail = value.detail,
+                type = "image"
+            )
+        }
+        encoder.encodeSerializableValue(surrogateSer, surrogate)
+    }
+}
+
+
+
+
 object MessageContentSerializer : KSerializer<MessageContent> {
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("MessageContent")
 
@@ -190,11 +287,25 @@ object MessageContentSerializer : KSerializer<MessageContent> {
 
         return when {
             json is JsonPrimitive && json.isString -> MessageContent.StringContent(json.content)
+            json is JsonArray -> {
+                // Handle array format like [{"text":"...", "type":"text"}]
+                if (json.isEmpty()) {
+                    throw SerializationException("Empty content array")
+                }
+                // Take the first element and deserialize it
+                val firstElement = json[0]
+                MessageContent.RequestContent(
+                    jsonDecoder.json.decodeFromJsonElement(
+                        CompletionRequestContentSerializer(),
+                        firstElement
+                    ) as CompletionRequestContent
+                )
+            }
             else -> MessageContent.RequestContent(
                 jsonDecoder.json.decodeFromJsonElement(
-                    CompletionRequestContent.serializer(),
+                    CompletionRequestContentSerializer(),
                     json
-                )
+                ) as CompletionRequestContent
             )
         }
     }
@@ -224,7 +335,7 @@ object CompletionRequestSerializer : KSerializer<CompletionRequest> {
         compositeEncoder.encodeStringElement(descriptor, 0, value.role)
         val jsonElement = when (val content = value.content) {
             is String -> JsonPrimitive(content)
-            is CompletionRequestContent -> Json.encodeToJsonElement(content)
+            is CompletionRequestContent ->  Json.encodeToJsonElement(content)
             else -> throw SerializationException("Unsupported content type: ${content::class}")
         }
         compositeEncoder.encodeSerializableElement(descriptor, 1, JsonElement.serializer(), jsonElement)
@@ -287,4 +398,5 @@ val MaximJson: Json = Json {
     classDiscriminator = "type"
     isLenient = true
     ignoreUnknownKeys = true
+    explicitNulls = false
 }

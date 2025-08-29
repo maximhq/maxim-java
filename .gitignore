@@ -101,3 +101,5 @@ application.properties
 
 gradle.properties
 keys
+
+.env

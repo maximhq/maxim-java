@@ -10,7 +10,9 @@ enum class Entity {
     SPAN,
     GENERATION,
     FEEDBACK,
-    RETRIEVAL;
+    RETRIEVAL,
+    TOOL_CALL,
+    ERROR;
 
     override fun toString(): String {
         return name.lowercase(Locale.getDefault())
@@ -18,10 +20,10 @@ enum class Entity {
 }
 
 class CommitLog(
-    private val entity: Entity,
-    private val entityId: String,
-    private val action: String,
-    private val data: Any?,
+    val entity: Entity,
+    val entityId: String,
+    val action: String,
+    val data: Any?,
 ) {
     fun serialize(): String {
         val jsonData = MaximJson.encodeToString(data ?: emptyMap<String, Any>())
