@@ -44,6 +44,11 @@ class Session(config: SessionConfig, writer: LogWriter) : EventEmittingBaseConta
             addTag(writer, ENTITY, id, key, value)
         }
 
+        fun addMetadata(writer: LogWriter, id: String, key: String, value: Any) {
+            addMetadata(writer, ENTITY, id, key, value)
+        }
+
+
         fun addEvent(writer: LogWriter, sessionId: String, name: String, tags: Map<String, String>? = null) {
             addEvent(writer, ENTITY, sessionId, name, tags)
         }

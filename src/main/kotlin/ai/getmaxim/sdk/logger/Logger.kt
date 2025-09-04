@@ -11,6 +11,7 @@ data class LoggerConfig(
     val flushIntervalSeconds: Int = 10,
 )
 
+@kotlinx.serialization.ExperimentalSerializationApi
 class Logger(
     config: LoggerConfig,
     apiKey: String,
@@ -46,10 +47,8 @@ class Logger(
     }
 
     fun cleanup(): CompletableFuture<Void> {
-        return CompletableFuture.runAsync {
-            runBlocking { writer.cleanup() }
-            null
-        }
+        runBlocking { writer.cleanup() }
+        return CompletableFuture.completedFuture(null)
     }
 
     // Session methods
@@ -69,17 +68,33 @@ class Logger(
         Session.setFeedback(writer, sessionId, feedback)
     }
 
+    fun sessionAddMetadata(sessionId: String, key: String, value: Any) {
+        Session.addMetadata(writer, sessionId, key, value)
+    }
+
     fun sessionAddTrace(sessionId: String, config: TraceConfig): Trace {
         return Session.addTrace(writer, sessionId, config)
     }
 
     // Trace methods
-    fun traceAddGeneration(traceId: String, config: GenerationConfig) {
-        Trace.addGeneration(writer, traceId, config)
+    fun traceAddGeneration(traceId: String, config: GenerationConfig): Generation {
+        return Trace.addGeneration(writer, traceId, config)
     }
 
-    fun traceAddRetrieval(traceId: String, config: RetrievalConfig) {
-        Trace.addRetrieval(writer, traceId, config)
+    fun traceAddRetrieval(traceId: String, config: RetrievalConfig): Retrieval {
+        return Trace.addRetrieval(writer, traceId, config)
+    }
+
+    fun traceAddAttachment(traceId: String, attachment: Attachment) {
+        return Trace.addAttachment(writer, traceId, attachment)
+    }
+
+    fun traceAddToolCall(traceId: String, config: ToolCallConfig): ToolCall {
+        return Trace.addToolCall(writer, traceId, config)
+    }
+
+    fun traceAddError(traceId: String, config: ErrorConfig): Error {
+        return Trace.addError(writer, traceId, config)
     }
 
     fun traceSetOutput(traceId: String, output: String) {
@@ -90,8 +105,8 @@ class Logger(
         Trace.setInput(writer, traceId, input)
     }
 
-    fun traceAddSpan(traceId: String, config: SpanConfig) {
-        Trace.addSpan(writer, traceId, config)
+    fun traceAddSpan(traceId: String, config: SpanConfig): Span {
+        return Trace.addSpan(writer, traceId, config)
     }
 
     fun traceAddTag(traceId: String, key: String, value: String) {
@@ -127,6 +142,10 @@ class Logger(
         Generation.setResult(writer, generationId, result)
     }
 
+    fun generateAddAttachment(generationId: String, attachment: Attachment) {
+        Generation.addAttachment(writer, generationId, attachment)
+    }
+
     fun generationSetResult(generationId: String, result: ChatCompletionResult) {
         Generation.setResult(writer, generationId, result)
     }
@@ -140,16 +159,16 @@ class Logger(
     }
 
     // Span methods
-    fun spanAddGeneration(spanId: String, config: GenerationConfig) {
-        Span.addGeneration(writer, spanId, config)
+    fun spanAddGeneration(spanId: String, config: GenerationConfig): Generation {
+        return Span.addGeneration(writer, spanId, config)
     }
 
-    fun spanRetrieval(spanId: String, config: RetrievalConfig) {
-        Span.addRetrieval(writer, spanId, config)
+    fun spanRetrieval(spanId: String, config: RetrievalConfig): Retrieval {
+        return Span.addRetrieval(writer, spanId, config)
     }
 
-    fun spanAddSubSpan(spanId: String, config: SpanConfig) {
-        Span.addSpan(writer, spanId, config)
+    fun spanAddSubSpan(spanId: String, config: SpanConfig): Span {
+        return Span.addSpan(writer, spanId, config)
     }
 
     fun spanAddTag(spanId: String, key: String, value: String) {
@@ -175,6 +194,10 @@ class Logger(
 
     fun retrievalSetOutput(retrievalId: String, output: List<String>) {
         Retrieval.setOutput(writer, retrievalId, output)
+    }
+
+    fun retrievalSetAttachment(retrievalId: String, attachment: Attachment) {
+        Retrieval.addAttachment(writer, retrievalId, attachment)
     }
 
     fun retrievalSetOutput(retrievalId: String, output: String) {

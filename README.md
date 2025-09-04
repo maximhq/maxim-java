@@ -28,6 +28,10 @@ implementation("dev.getmaxim.sdk:maxim-java:0.1.2")
 
 ## Version changelog
 
+## v1.1.0
+
+- Adds support for ToolCalls, Attachments
+
 ### v0.1.2
 
 - First public version

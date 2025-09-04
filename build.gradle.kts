@@ -2,6 +2,13 @@ import com.vanniktech.maven.publish.SonatypeHost
 import org.gradle.api.JavaVersion
 import org.gradle.external.javadoc.StandardJavadocDocletOptions
 
+tasks.test {
+    useJUnitPlatform()
+    environment("TEST_API_KEY", "test-key-123")
+    environment("TEST_DB_URL", "jdbc:h2:mem:test")
+    environment("ENV", "test")
+}
+
 plugins {
     kotlin("jvm") version "2.0.20"
     kotlin("plugin.serialization") version "2.0.20"
@@ -15,18 +22,22 @@ kotlin { jvmToolchain(17) }
 
 group = "ai.getmaxim"
 
-version = "1.0.1"
+version = "1.1.0"
 
 repositories { mavenCentral() }
 
 dependencies {
     compileOnly("org.slf4j:slf4j-api:[1.0,)")
 
+    implementation("io.ktor:ktor-client-core:3.2.3")
+    implementation("io.ktor:ktor-client-cio:3.2.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
 
-    testImplementation("ch.qos.logback:logback-classic:1.2.6")
+    testImplementation("uk.org.lidalia:slf4j-test:1.2.0")
+    testImplementation("io.github.cdimascio:dotenv-kotlin:6.4.1")
+    testImplementation("ch.qos.logback:logback-classic:1.4.14")
     testImplementation("com.google.code.gson:gson:2.11.0")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.9.1")

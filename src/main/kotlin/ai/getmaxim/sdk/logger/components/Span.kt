@@ -50,7 +50,7 @@ class Span(config: SpanConfig, writer: LogWriter) : EventEmittingBaseContainer(E
     companion object {
         private val ENTITY = Entity.SPAN
 
-        fun addGeneration(writer: LogWriter, id: String, config: GenerationConfig) {
+        fun addGeneration(writer: LogWriter, id: String, config: GenerationConfig): Generation {
             val generation = Generation(config, writer)
             commit(
                 writer, ENTITY, id, "add-generation", mapOf(
@@ -58,6 +58,7 @@ class Span(config: SpanConfig, writer: LogWriter) : EventEmittingBaseContainer(E
                     *generation.data().toList().toTypedArray()
                 )
             )
+            return generation
         }
 
         fun addSpan(writer: LogWriter, id: String, config: SpanConfig): Span {

@@ -1,11 +1,17 @@
 package ai.getmaxim.sdk.logger
 
+import ai.getmaxim.sdk.Maxim
 import ai.getmaxim.sdk.apis.MaximAPI
-import ai.getmaxim.sdk.logger.components.CommitLog
+import ai.getmaxim.sdk.logger.components.*
 import ai.getmaxim.sdk.utils.Mutex
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.buffer
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.slf4j.event.Level
 import java.io.File
 import java.time.Instant
 import java.util.*
@@ -21,15 +27,22 @@ data class LogWriterConfig(
     val isDebug: Boolean = false
 )
 
+@kotlinx.serialization.ExperimentalSerializationApi
 class LogWriter(private val config: LogWriterConfig) : CoroutineScope {
-    private val logger: Logger = LoggerFactory.getLogger(LogWriter::class.java)
+    private val logger = LoggerFactory.getLogger(Maxim::class.java).also {
+        if (config.isDebug)
+            it.atLevel(Level.DEBUG)
+        else
+            it.atLevel(Level.INFO)
+    }
     private val id = generateUniqueId()
     private val job = SupervisorJob()
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Default + job
     private val queue: Queue<CommitLog> = LinkedList()
+    private val uploadAttachmentQueue: Queue<CommitLog> = LinkedList()
+    private val uploadAttachmentsMutex = Mutex("log-writer-attachments")
     private val mutex = Mutex("log-writer")
-    private val isDebug = config.isDebug
     private var flushJob: Job? = null
     private val logsDir = File(System.getProperty("java.io.tmpdir"), "maxim-sdk/$id/maxim-logs")
 
@@ -37,7 +50,8 @@ class LogWriter(private val config: LogWriterConfig) : CoroutineScope {
         if (config.autoFlush) {
             flushJob = this@LogWriter.launch {
                 while (isActive) {
-                    flush()
+                    run { flush() }
+                    run { flushAttachments() }
                     delay(config.flushInterval.toLong() * 1000)
                 }
             }
@@ -76,8 +90,7 @@ class LogWriter(private val config: LogWriterConfig) : CoroutineScope {
     private suspend fun flushLogs(logs: List<CommitLog>) {
         try {
             flushLogFiles()
-            if (isDebug)
-                logs.forEach { logger.debug(it.serialize()) }
+            logs.forEach { logger.debug(it.serialize()) }
             val content = logs.joinToString("\n") { it.serialize() }
             MaximAPI.pushLogs(config.baseUrl, config.apiKey, config.repositoryId, content)
         } catch (e: Exception) {
@@ -86,9 +99,110 @@ class LogWriter(private val config: LogWriterConfig) : CoroutineScope {
         }
     }
 
+    private suspend fun flushLogAttachments(logs: List<CommitLog>) {
+        logs.asFlow()
+            .map { it ->
+                logger.debug("Uploading attachment: ${it.serialize()}")
+                logger.debug("Attachment data: ${it.data}")
+                val attachment: Attachment = it.data as Attachment? ?: return@map
+                val key =
+                    "${config.repositoryId}/${it.entity.toString()}/${it.entityId}/files/original/${attachment.id}"
+                when (attachment) {
+                    is FileDataAttachment -> {
+                        val resp = MaximAPI.getUploadUrl(
+                            config.baseUrl,
+                            config.apiKey,
+                            key,
+                            attachment.mimeType ?: "application/octet-stream",
+                            attachment.data.size
+                        )
+                        MaximAPI.uploadToSignedUrl(
+                            resp.url,
+                            attachment.data,
+                            attachment.mimeType ?: "application/octet-stream"
+                        )
+                        commit(
+                            CommitLog(
+                                entity = it.entity,
+                                entityId = it.entityId,
+                                data = it.data,
+                                action = "add-attachment"
+                            )
+                        )
+                    }
+
+                    is FileAttachment -> {
+                        // reading file from the path
+                        val bytes = File("image.png").readBytes()
+                        val resp = MaximAPI.getUploadUrl(
+                            config.baseUrl,
+                            config.apiKey,
+                            key,
+                            attachment.mimeType ?: "application/octet-stream",
+                            bytes.size
+                        )
+                        MaximAPI.uploadToSignedUrl(
+                            resp.url,
+                            bytes,
+                            attachment.mimeType ?: "application/octet-stream"
+                        )
+                        commit(
+                            CommitLog(
+                                entity = it.entity,
+                                entityId = it.entityId,
+                                data = it.data,
+                                action = "add-attachment"
+                            )
+                        )
+                    }
+
+                    is UrlAttachment -> {
+                        // Then we just attach URL as is
+                        commit(
+                            CommitLog(
+                                entity = it.entity,
+                                entityId = it.entityId,
+                                data = it.data,
+                                action = "add-attachment"
+                            )
+                        )
+                    }
+                }
+            }
+            .flowOn(Dispatchers.IO)
+            .buffer(3)
+            .collect { }
+        // Currently we are keeping to 3 parallel uploads
+        // Later we can make them configurable
+    }
+
     fun commit(log: CommitLog) {
-        logger.debug("Committing log: ${log.serialize()}")
+        if (log.action == "upload-attachment") {
+            logger.debug("Adding attachment to upload queue: ${log.serialize()}")
+            uploadAttachmentQueue.add(log)
+            return
+        }
         queue.add(log)
+    }
+
+    private suspend fun flushAttachments() {
+        logger.debug("Flushing attachments")
+        uploadAttachmentsMutex.withLock {
+            val items = uploadAttachmentQueue.toList()
+            uploadAttachmentQueue.clear()
+            if (items.isEmpty()) {
+                logger.debug("No attachments to flush")
+                return@withLock
+            }
+            logger.debug("Flushing attachments ${items.size}")
+            runCatching {
+                flushLogAttachments(items)
+            }.onFailure { e ->
+                logger.error("Couldn't flush file attachments: ${e.message}")
+            }.onSuccess {
+                logger.debug("Attachment file flush complete")
+            }
+        }
     }
 
     private suspend fun flush() {
@@ -111,8 +225,15 @@ class LogWriter(private val config: LogWriterConfig) : CoroutineScope {
     }
 
     suspend fun cleanup() {
-        flushJob?.cancel()
-        flush()
+        try {
+            logger.debug("Cleaning up")
+            flushAttachments()
+            flush()
+            flushJob?.cancelAndJoin()
+            job.cancelAndJoin()
+        } catch (e: Exception) {
+            logger.error("Error while cleaning up: ${e.message}")
+        }
     }
 
     companion object {

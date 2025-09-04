@@ -1,19 +1,23 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 package ai.getmaxim.sdk.logger.components
 
 import ai.getmaxim.sdk.logger.utcNow
 import ai.getmaxim.sdk.logger.LogWriter
+import ai.getmaxim.sdk.models.AnySerializer
+import ai.getmaxim.sdk.models.MaximJson
 import ai.getmaxim.sdk.models.Tags
 import kotlinx.serialization.Serializable
 import java.time.Instant
 import kotlin.reflect.full.memberProperties
 
 
-@Serializable
+@Serializable(with = AnySerializer::class)
 abstract class BaseConfig(
     open val id: String,
     open val spanId: String? = null,
     open val name: String? = null,
-    open val tags: Map<String, String>? = null
+    open val tags: Map<String, String>? = null,
+    open val metadata: Map<String, Any>? = null
 )
 
 abstract class BaseContainer(
@@ -26,6 +30,7 @@ abstract class BaseContainer(
     protected var spanId: String? = config.spanId
     protected val startTimestamp: Instant = utcNow()
     protected var endTimestamp: Instant? = null
+    protected var metadata: MutableMap<String, Any> = config.metadata?.toMutableMap() ?: mutableMapOf()
     protected var tags: MutableMap<String, String> = config.tags?.toMutableMap() ?: mutableMapOf()
 
     val id: String
@@ -33,6 +38,10 @@ abstract class BaseContainer(
 
     open fun addTag(key: String, value: String) {
         commit("update", mapOf("tags" to mapOf(key to value)))
+    }
+
+    open fun addMetadata(key: String, value: Any) {
+        commit("update", mapOf("metadata" to mapOf(key to value)))
     }
 
     open fun end() {
@@ -45,7 +54,8 @@ abstract class BaseContainer(
         "spanId" to spanId,
         "tags" to tags,
         "startTimestamp" to startTimestamp,
-        "endTimestamp" to endTimestamp
+        "endTimestamp" to endTimestamp,
+        "metadata" to metadata.mapValues { (_, value) -> MaximJson.encodeToString(value) }
     )
 
     protected fun commit(action: String, data: Any? = null) {
@@ -55,6 +65,10 @@ abstract class BaseContainer(
     companion object {
         fun addTag(writer: LogWriter, entity: Entity, id: String, key: String, value: String) {
             commit(writer, entity, id, "update", mapOf("tags" to mapOf(key to value)))
+        }
+
+        fun addMetadata(writer: LogWriter, entity: Entity, id: String, key: String, value: Any) {
+            commit(writer, entity, id, "update", mapOf("metadata" to mapOf(key to value)))
         }
 
         fun end(writer: LogWriter, entity: Entity, id: String, data: Any? = null) {
