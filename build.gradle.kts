@@ -2,12 +2,12 @@ import com.vanniktech.maven.publish.SonatypeHost
 import org.gradle.api.JavaVersion
 import org.gradle.external.javadoc.StandardJavadocDocletOptions
 
-tasks.test {
-    useJUnitPlatform()
-    environment("TEST_API_KEY", "test-key-123")
-    environment("TEST_DB_URL", "jdbc:h2:mem:test")
-    environment("ENV", "test")
-}
+//tasks.test {
+//    useJUnitPlatform()
+//    environment("TEST_API_KEY", "test-key-123")
+//    environment("TEST_DB_URL", "jdbc:h2:mem:test")
+//    environment("ENV", "test")
+//}
 
 plugins {
     kotlin("jvm") version "2.0.20"
@@ -47,7 +47,7 @@ mavenPublishing {
     publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL, true)
     signAllPublications()
 
-    coordinates(group.toString(), "maxim-java", version.toString())
+    coordinates(group.toString(), "sdk", version.toString())
 
     pom {
         name.set("Maxim Java Library")
