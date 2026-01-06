@@ -12,14 +12,14 @@ This is JVM (written in Kotlin) SDK for enabling Maxim observability. [Maxim](ht
 
 1. Gradle/Groovy
 ```groovy
-implementation("dev.getmaxim.sdk:maxim-java:1.1.0")
+implementation("ai.getmaxim:maxim-java:1.1.0")
 ```
 2. Maven
 
 ```xml
 
 <dependency>
-    <groupId>ai.getmaxim.sdk</groupId>
+    <groupId>ai.getmaxim</groupId>
     <artifactId>maxim-java</artifactId>
     <version>0.1.2</version>
 </dependency>
