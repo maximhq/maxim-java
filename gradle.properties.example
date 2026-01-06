@@ -1,0 +1,11 @@
+# Maven Central Release Properties
+# Copy this file to gradle.properties and fill in your credentials
+# Do NOT commit gradle.properties with actual credentials
+
+# GPG Signing - password for your GPG private key (stored in keys/private_key.gpg)
+signingPassword=YOUR_GPG_KEY_PASSWORD
+
+# Maven Central (Sonatype) Credentials
+# Get these from https://central.sonatype.com/account
+mavenCentralUsername=YOUR_SONATYPE_USERNAME
+mavenCentralPassword=YOUR_SONATYPE_PASSWORD_OR_TOKEN

@@ -1,7 +1,7 @@
 package ai.getmaxim.sdk.logger.components
 
+import ai.getmaxim.sdk.models.AnySerializer
 import ai.getmaxim.sdk.models.MaximJson
-import kotlinx.serialization.encodeToString
 import java.util.*
 
 enum class Entity {
@@ -26,7 +26,7 @@ class CommitLog(
     val data: Any?,
 ) {
     fun serialize(): String {
-        val jsonData = MaximJson.encodeToString(data ?: emptyMap<String, Any>())
+        val jsonData = MaximJson.encodeToString(AnySerializer, data ?: emptyMap<String, Any>())
         return "${entity}{id=$entityId,action=$action,data=$jsonData}"
     }
 }

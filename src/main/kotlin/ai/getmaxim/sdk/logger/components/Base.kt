@@ -55,7 +55,7 @@ abstract class BaseContainer(
         "tags" to tags,
         "startTimestamp" to startTimestamp,
         "endTimestamp" to endTimestamp,
-        "metadata" to metadata.mapValues { (_, value) -> MaximJson.encodeToString(value) }
+        "metadata" to metadata.mapValues { (_, value) -> MaximJson.encodeToString(AnySerializer, value) }
     )
 
     protected fun commit(action: String, data: Any? = null) {
