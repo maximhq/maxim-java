@@ -100,7 +100,7 @@ abstract class BaseContainer(
             action: String,
             data: Any? = null
         ) {
-            writer.commit(CommitLog(entity, id, action, data ?: {}))
+            writer.commit(CommitLog(entity, id, action, data ?: emptyMap<String, Any>()))
         }
     }
 }

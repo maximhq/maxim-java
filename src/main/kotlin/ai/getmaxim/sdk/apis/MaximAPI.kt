@@ -43,7 +43,7 @@ class MaximAPI {
             }.bodyAsText())
         }
 
-        suspend fun getPrompt(baseUrl: String, apiKey: String, id: String): PromptVersionsAndRules {
+        suspend fun getPrompt(baseUrl: String, apiKey: String, id: String): PromptVersionsAndRules? {
             val requestUrl = "$baseUrl/api/sdk/v4/prompts?promptId=$id"
             val response: MaximApiPromptResponse = call(requestUrl, "GET", apiKey)
             return response.data
@@ -57,7 +57,7 @@ class MaximAPI {
             return response.data
         }
 
-        suspend fun getPromptChain(baseUrl: String, apiKey: String, id: String): PromptChainWithVersionsAndRules {
+        suspend fun getPromptChain(baseUrl: String, apiKey: String, id: String): PromptChainWithVersionsAndRules? {
             val requestUrl = "$baseUrl/api/sdk/v4/prompt-chains?promptChainId=$id"
             val response: MaximApiPromptChainResponse = call(requestUrl, "GET", apiKey)
             return response.data

@@ -22,7 +22,7 @@ kotlin { jvmToolchain(17) }
 
 group = "ai.getmaxim"
 
-version = "1.1.1"
+version = "1.1.2"
 
 repositories { mavenCentral() }
 
@@ -93,5 +93,23 @@ tasks.javadoc {
     if (JavaVersion.current().isJava9Compatible) {
         (options as StandardJavadocDocletOptions).addBooleanOption("html5", true)
     }
+}
+
+// Local Maven publishing (without signing) for development
+publishing {
+    publications {
+        create<MavenPublication>("local") {
+            from(components["java"])
+            groupId = "ai.getmaxim"
+            artifactId = "sdk"
+            version = project.version.toString()
+        }
+    }
+}
+
+tasks.register("publishLocal") {
+    dependsOn("publishLocalPublicationToMavenLocal")
+    group = "publishing"
+    description = "Publish to local Maven repository without signing"
 }
 

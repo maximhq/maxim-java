@@ -80,7 +80,7 @@ data class PromptVersionsAndRules(
 
 @Serializable
 data class MaximApiPromptResponse(
-    val data: PromptVersionsAndRules,
+    val data: PromptVersionsAndRules? = null,
     val error: Error? = null
 )
 
@@ -95,6 +95,6 @@ data class PromptWithVersionsAndRules(
 
 @Serializable
 data class MaximApiPromptsResponse(
-    val data: List<PromptWithVersionsAndRules>,
+    val data: List<PromptWithVersionsAndRules> = emptyList(),
     val error: Error? = null
 )

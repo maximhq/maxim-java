@@ -341,12 +341,12 @@ class Maxim(private val config: Config) {
             println("version and rules ${MaximJson.encodeToString(versionAndRules)}")
             if (versionAndRules == null) {
                 versionAndRules = runBlocking { MaximAPI.getPrompt(baseUrl, apiKey, id) }
-                if (versionAndRules.versions.isEmpty()) {
+                if (versionAndRules == null || versionAndRules.versions.isEmpty()) {
                     throw Exception("No active deployments found for Prompt $id")
                 }
                 runBlocking { cache.set(key, MaximJson.encodeToString(versionAndRules)) }
             }
-            getPromptVersionForRule(versionAndRules, rule)
+            getPromptVersionForRule(versionAndRules!!, rule)
                 ?: throw Exception("No active deployments found for Prompt $id")
         }
     }
@@ -382,12 +382,12 @@ class Maxim(private val config: Config) {
             var versionAndRules = runBlocking { getPromptChainFromCache(key) }
             if (versionAndRules == null) {
                 versionAndRules = runBlocking { MaximAPI.getPromptChain(baseUrl, apiKey, id) }
-                if (versionAndRules.versions.isEmpty()) {
+                if (versionAndRules == null || versionAndRules.versions.isEmpty()) {
                     throw Exception("No active deployments found for Prompt Chain $id")
                 }
                 runBlocking { cache.set(key, MaximJson.encodeToString(versionAndRules)) }
             }
-            getPromptChainVersionForRule(versionAndRules, rule)
+            getPromptChainVersionForRule(versionAndRules!!, rule)
                 ?: throw Exception("No active deployments found for Prompt Chain $id")
         }
     }

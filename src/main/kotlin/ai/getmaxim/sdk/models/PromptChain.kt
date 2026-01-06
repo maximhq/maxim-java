@@ -78,12 +78,12 @@ data class PromptChainWithVersionAndRulesAndId(
 
 @Serializable
 data class MaximApiPromptChainResponse(
-    val data: PromptChainWithVersionAndRulesAndId,
+    val data: PromptChainWithVersionAndRulesAndId? = null,
     val error: Error? = null
 )
 
 @Serializable
 data class MaximApiPromptChainsResponse(
-    val data: List<PromptChainWithVersionAndRulesAndId>,
+    val data: List<PromptChainWithVersionAndRulesAndId> = emptyList(),
     val error: Error? = null
 )

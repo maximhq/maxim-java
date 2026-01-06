@@ -12,12 +12,12 @@ data class Folder(
 
 @Serializable
 data class MaximFolderResponse(
-    val data: Folder,
+    val data: Folder? = null,
     val error: Error? = null
 )
 
 @Serializable
 data class MaximFoldersResponse(
-    val data: List<Folder>,
+    val data: List<Folder> = emptyList(),
     val error: Error? = null
 )

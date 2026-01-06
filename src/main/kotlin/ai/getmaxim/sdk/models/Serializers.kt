@@ -27,6 +27,7 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import java.time.Instant
 import java.util.Date
+import kotlin.reflect.full.memberProperties
 
 object DateSerializer : KSerializer<Date> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("Date", PrimitiveKind.LONG)
@@ -190,7 +191,22 @@ object AnySerializer : KSerializer<Any> {
 
             is List<*> -> JsonArray(value.map { serializeToJsonElement(it) }.filter { it != JsonNull })
             is Instant -> JsonPrimitive(value.toIsoString())
-            else -> Json.encodeToJsonElement(value)
+            else -> {
+                // Try to serialize using reflection for data classes, otherwise convert to string
+                try {
+                    val kClass = value::class
+                    if (kClass.isData) {
+                        val props = kClass.memberProperties.associate { prop ->
+                            prop.name to serializeToJsonElement(prop.getter.call(value))
+                        }.filterValues { it != JsonNull }
+                        JsonObject(props)
+                    } else {
+                        JsonPrimitive(value.toString())
+                    }
+                } catch (e: Exception) {
+                    JsonPrimitive(value.toString())
+                }
+            }
         }
     }
 
