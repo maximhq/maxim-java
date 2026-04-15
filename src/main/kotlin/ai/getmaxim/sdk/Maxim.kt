@@ -7,6 +7,7 @@ import ai.getmaxim.sdk.logger.Logger
 import ai.getmaxim.sdk.logger.LoggerConfig
 import ai.getmaxim.sdk.models.*
 import ai.getmaxim.sdk.models.RuleType
+import ai.getmaxim.sdk.test_runs.TestRunBuilder
 import kotlinx.coroutines.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
@@ -469,6 +470,17 @@ class Maxim(private val config: Config) {
                 )
             }
         }
+    }
+
+    /**
+     * Create a new test run builder.
+     *
+     * @param name The name of the test run
+     * @param workspaceId The workspace ID to run the test in
+     * @return A TestRunBuilder for configuring and executing the test run
+     */
+    fun createTestRun(name: String, workspaceId: String): TestRunBuilder {
+        return TestRunBuilder(baseUrl, apiKey, name, workspaceId)
     }
 
     fun cleanup(): CompletableFuture<Void> {

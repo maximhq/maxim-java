@@ -12,7 +12,7 @@ This is JVM (written in Kotlin) SDK for enabling Maxim observability. [Maxim](ht
 
 1. Gradle/Groovy
 ```groovy
-implementation("ai.getmaxim:sdk:1.1.2")
+implementation("ai.getmaxim:sdk:1.2.0")
 ```
 2. Maven
 
@@ -21,12 +21,19 @@ implementation("ai.getmaxim:sdk:1.1.2")
 <dependency>
     <groupId>ai.getmaxim</groupId>
     <artifactId>sdk</artifactId>
-    <version>1.1.2</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 
 
 ## Version changelog
+
+### v1.2.0
+
+- Adds support for Test Runs with workflows, prompt versions, prompt chains, and `yieldsOutput` for custom output functions
+- Supports local evaluators, platform evaluators and mixed local + platform evaluator configurations
+- Adds simulation support for prompt, workflow and local-execution (`yieldsOutput`) modes
+- Supports presets, dataset and local data sources, data functions, environment selection, tags, and human evaluation configs
 
 ### v1.1.2
 

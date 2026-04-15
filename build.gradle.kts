@@ -2,13 +2,6 @@ import com.vanniktech.maven.publish.SonatypeHost
 import org.gradle.api.JavaVersion
 import org.gradle.external.javadoc.StandardJavadocDocletOptions
 
-//tasks.test {
-//    useJUnitPlatform()
-//    environment("TEST_API_KEY", "test-key-123")
-//    environment("TEST_DB_URL", "jdbc:h2:mem:test")
-//    environment("ENV", "test")
-//}
-
 plugins {
     kotlin("jvm") version "2.0.20"
     kotlin("plugin.serialization") version "2.0.20"
@@ -18,11 +11,30 @@ plugins {
     id("com.vanniktech.maven.publish") version "0.29.0"
 }
 
-kotlin { jvmToolchain(17) }
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
+
+tasks.test {
+    useJUnitPlatform()
+    outputs.upToDateWhen { false }
+    testLogging {
+        showStandardStreams = true
+        events("passed", "failed", "skipped", "standardOut", "standardError")
+    }
+}
 
 group = "ai.getmaxim"
 
-version = "1.1.2"
+version = "1.2.0"
 
 repositories { mavenCentral() }
 
